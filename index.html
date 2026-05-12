@@ -1,1 +1,476 @@
 
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PeopleSoft Performance Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cobalt: #00436b;
+    --teal: #008080;
+    --emerald: #50C878;
+    --sage: #90C183;
+    --carolina: #53A0D2;
+    --bg: #f5f7fa;
+    --card: #ffffff;
+    --border: #e2e8f0;
+    --text: #1e293b;
+    --muted: #64748b;
+    --ok: #22c55e;
+    --warn: #f59e0b;
+    --err: #ef4444;
+    --info: #3b82f6;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+  /* NAV */
+  nav {
+    background: #fff;
+    border-bottom: 1px solid var(--border);
+    padding: 0 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .nav-brand { display: flex; align-items: center; gap: 10px; font-family: 'Google Sans', sans-serif; font-size: 17px; font-weight: 600; color: var(--cobalt); }
+  .nav-brand svg { color: var(--teal); }
+  .nav-right { display: flex; align-items: center; gap: 16px; font-size: 13px; color: var(--muted); }
+  .live-badge { background: #dcfce7; color: #166534; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; display:flex; align-items:center; gap:5px; }
+  .live-dot { width: 7px; height: 7px; background: var(--ok); border-radius: 50%; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* LAYOUT */
+  .wrapper { max-width: 1280px; margin: 0 auto; padding: 24px 20px; }
+  .page-title { font-family: 'Google Sans', sans-serif; font-size: 22px; font-weight: 600; color: var(--cobalt); margin-bottom: 4px; }
+  .page-sub { color: var(--muted); font-size: 13px; margin-bottom: 24px; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 5px; width: fit-content; }
+  .tab { padding: 7px 18px; border-radius: 7px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); border: none; background: none; transition: all .2s; }
+  .tab.active { background: var(--cobalt); color: #fff; }
+  .tab:hover:not(.active) { background: var(--bg); color: var(--text); }
+
+  /* SECTIONS */
+  .section { display: none; }
+  .section.active { display: block; }
+
+  /* GRID */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 16px; margin-bottom: 16px; }
+  @media(max-width:900px) { .grid-4,.grid-3{grid-template-columns:1fr 1fr} .grid-2{grid-template-columns:1fr} }
+  @media(max-width:600px) { .grid-4,.grid-3,.grid-2{grid-template-columns:1fr} }
+
+  /* CARDS */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+  .card-title { font-family: 'Google Sans', sans-serif; font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .card-title span { font-size: 11px; font-weight: 500; }
+
+  /* STAT CARDS */
+  .stat-val { font-family: 'Google Sans', sans-serif; font-size: 32px; font-weight: 600; color: var(--cobalt); line-height: 1; }
+  .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+
+  /* STATUS PILL */
+  .pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .pill.ok { background: #dcfce7; color: #166534; }
+  .pill.warn { background: #fef3c7; color: #92400e; }
+  .pill.err { background: #fee2e2; color: #991b1b; }
+  .pill.info { background: #dbeafe; color: #1e40af; }
+  .pill::before { content:''; width:6px; height:6px; border-radius:50%; background:currentColor; }
+
+  /* PROGRESS BAR */
+  .prog-wrap { margin-bottom: 12px; }
+  .prog-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .prog-bar { height: 7px; background: #e2e8f0; border-radius: 10px; overflow: hidden; }
+  .prog-fill { height: 100%; border-radius: 10px; transition: width .6s ease; }
+  .prog-fill.ok { background: var(--emerald); }
+  .prog-fill.warn { background: var(--warn); }
+  .prog-fill.err { background: var(--err); }
+
+  /* TABLE */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 8px 10px; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); font-size: 12px; }
+  td { padding: 9px 10px; border-bottom: 1px solid #f1f5f9; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #f8fafc; }
+
+  /* SERVICE ROW */
+  .svc-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+  .svc-row:last-child { border: none; }
+  .svc-name { font-weight: 500; }
+  .svc-sub { font-size: 11px; color: var(--muted); }
+
+  /* ALERT BOX */
+  .alert { padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+  .alert.warn { background: #fef3c7; border-left: 3px solid var(--warn); }
+  .alert.err { background: #fee2e2; border-left: 3px solid var(--err); }
+  .alert.ok { background: #dcfce7; border-left: 3px solid var(--ok); }
+
+  /* SECTION HEADER */
+  .sec-hdr { display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .sec-hdr-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:16px; }
+  .sec-hdr-title { font-family:'Google Sans',sans-serif; font-size:16px; font-weight:600; color:var(--cobalt); }
+  .sec-hdr-sub { font-size:12px; color:var(--muted); }
+
+  .divider { height:1px; background:var(--border); margin: 20px 0; }
+  .col-span-2 { grid-column: span 2; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-brand">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+    PeopleSoft Monitor
+  </div>
+  <div class="nav-right">
+    <span>ENV: HRPRD01</span>
+    <span>Last refresh: <strong id="clock">--</strong></span>
+    <div class="live-badge"><div class="live-dot"></div> Live</div>
+  </div>
+</nav>
+
+<div class="wrapper">
+  <div class="page-title">Performance Monitoring Dashboard</div>
+  <div class="page-sub">Real-time health overview · PeopleSoft on Linux &amp; Windows</div>
+
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab active" onclick="show('os',this)">OS Health</button>
+    <button class="tab" onclick="show('db',this)">Database</button>
+    <button class="tab" onclick="show('app',this)">App Server</button>
+    <button class="tab" onclick="show('prcs',this)">Process Scheduler</button>
+    <button class="tab" onclick="show('web',this)">Web Server</button>
+  </div>
+
+  <!-- ===== OS ===== -->
+  <div id="os" class="section active">
+    <div class="sec-hdr">
+      <div class="sec-hdr-icon" style="background:#e0f2fe">🖥️</div>
+      <div><div class="sec-hdr-title">Operating System Health</div><div class="sec-hdr-sub">Linux &amp; Windows server metrics</div></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-title">Server Type</div>
+        <div class="stat-val" style="font-size:20px;">Linux</div>
+        <div class="stat-sub">RHEL 8.6 · x86_64</div>
+        <div style="margin-top:10px"><span class="pill ok">Online</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total CPU</div>
+        <div class="stat-val">68<span style="font-size:18px">%</span></div>
+        <div class="stat-sub">16 cores · 3.2 GHz</div>
+        <div class="prog-bar" style="margin-top:10px"><div class="prog-fill warn" style="width:68%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Total Memory</div>
+        <div class="stat-val">74<span style="font-size:18px">%</span></div>
+        <div class="stat-sub">59 GB / 80 GB used</div>
+        <div class="prog-bar" style="margin-top:10px"><div class="prog-fill warn" style="width:74%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Disk Space</div>
+        <div class="stat-val">52<span style="font-size:18px">%</span></div>
+        <div class="stat-sub">1.04 TB / 2 TB used</div>
+        <div class="prog-bar" style="margin-top:10px"><div class="prog-fill ok" style="width:52%"></div></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">High CPU Consuming Services</div>
+        <div class="svc-row"><div><div class="svc-name">psappsrv</div><div class="svc-sub">App Server Worker</div></div><span class="pill warn">38%</span></div>
+        <div class="svc-row"><div><div class="svc-name">psprcs</div><div class="svc-sub">Process Scheduler</div></div><span class="pill warn">21%</span></div>
+        <div class="svc-row"><div><div class="svc-name">java (WebLogic)</div><div class="svc-sub">Web Server JVM</div></div><span class="pill ok">8%</span></div>
+        <div class="svc-row"><div><div class="svc-name">oracle</div><div class="svc-sub">DB Process</div></div><span class="pill ok">7%</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">High Memory Consuming Services</div>
+        <div class="svc-row"><div><div class="svc-name">java (WebLogic)</div><div class="svc-sub">Web Server JVM</div></div><span class="pill err">18.2 GB</span></div>
+        <div class="svc-row"><div><div class="svc-name">psappsrv</div><div class="svc-sub">App Server Workers (×8)</div></div><span class="pill warn">12.4 GB</span></div>
+        <div class="svc-row"><div><div class="svc-name">oracle</div><div class="svc-sub">SGA + PGA</div></div><span class="pill warn">16 GB</span></div>
+        <div class="svc-row"><div><div class="svc-name">psprcs</div><div class="svc-sub">Scheduler Workers</div></div><span class="pill ok">4.1 GB</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Disk Usage by Mount <span><span class="pill ok">All within limits</span></span></div>
+      <div class="prog-wrap"><div class="prog-label"><span>/u01/oracle/data</span><span>71% · 568 GB / 800 GB</span></div><div class="prog-bar"><div class="prog-fill warn" style="width:71%"></div></div></div>
+      <div class="prog-wrap"><div class="prog-label"><span>/psft/pt</span><span>45% · 180 GB / 400 GB</span></div><div class="prog-bar"><div class="prog-fill ok" style="width:45%"></div></div></div>
+      <div class="prog-wrap"><div class="prog-label"><span>/tmp</span><span>22% · 11 GB / 50 GB</span></div><div class="prog-bar"><div class="prog-fill ok" style="width:22%"></div></div></div>
+      <div class="prog-wrap" style="margin-bottom:0"><div class="prog-label"><span>/</span><span>38% · 38 GB / 100 GB</span></div><div class="prog-bar"><div class="prog-fill ok" style="width:38%"></div></div></div>
+    </div>
+  </div>
+
+  <!-- ===== DATABASE ===== -->
+  <div id="db" class="section">
+    <div class="sec-hdr">
+      <div class="sec-hdr-icon" style="background:#d1fae5">🗄️</div>
+      <div><div class="sec-hdr-title">Database</div><div class="sec-hdr-sub">Oracle DB · HRPRD</div></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-title">DB Status</div>
+        <div class="stat-val" style="font-size:20px">HRPRD</div>
+        <div class="stat-sub">Oracle 19c · RAC</div>
+        <div style="margin-top:10px"><span class="pill ok">Up</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Listener</div>
+        <div class="stat-val" style="font-size:20px">1521</div>
+        <div class="stat-sub">TNS Listener</div>
+        <div style="margin-top:10px"><span class="pill ok">Active</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Invalid Objects</div>
+        <div class="stat-val" style="color:var(--err)">3</div>
+        <div class="stat-sub">Needs attention</div>
+        <div style="margin-top:10px"><span class="pill warn">Review</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Active Sessions</div>
+        <div class="stat-val">142</div>
+        <div class="stat-sub">Max: 500</div>
+        <div style="margin-top:10px"><span class="pill ok">Normal</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Tablespace Usage</div>
+        <div class="prog-wrap"><div class="prog-label"><span>PSDEFAULT</span><span>82%</span></div><div class="prog-bar"><div class="prog-fill err" style="width:82%"></div></div></div>
+        <div class="prog-wrap"><div class="prog-label"><span>PSTEMP</span><span>44%</span></div><div class="prog-bar"><div class="prog-fill ok" style="width:44%"></div></div></div>
+        <div class="prog-wrap"><div class="prog-label"><span>PSINDEX</span><span>67%</span></div><div class="prog-bar"><div class="prog-fill warn" style="width:67%"></div></div></div>
+        <div class="prog-wrap" style="margin-bottom:0"><div class="prog-label"><span>SYSTEM</span><span>30%</span></div><div class="prog-bar"><div class="prog-fill ok" style="width:30%"></div></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Blocking / Locked Sessions</div>
+        <div class="alert warn">⚠️ SID 204 blocking SID 317, 319 · Wait: 12 min</div>
+        <div class="alert ok">✅ No other blocking chains detected</div>
+        <table style="margin-top:8px">
+          <tr><th>SID</th><th>User</th><th>Object</th><th>Wait (min)</th></tr>
+          <tr><td>204</td><td>PS</td><td>PS_JOB</td><td><span class="pill err">12</span></td></tr>
+          <tr><td>317</td><td>PS</td><td>PS_JOB</td><td><span class="pill warn">12</span></td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Long Running SQL (> 5 min)</div>
+      <table>
+        <tr><th>SID</th><th>User</th><th>SQL Text</th><th>Duration</th><th>Status</th></tr>
+        <tr><td>408</td><td>PSFT</td><td>SELECT A.EMPLID, A.NAME FROM PS_PERSONAL...</td><td><span class="pill err">28 min</span></td><td><span class="pill warn">Active</span></td></tr>
+        <tr><td>317</td><td>PS</td><td>UPDATE PS_JOB SET EFFDT=...</td><td><span class="pill warn">12 min</span></td><td><span class="pill err">Blocked</span></td></tr>
+        <tr><td>501</td><td>PSFT</td><td>ANALYZE TABLE PSOPRDEFN...</td><td><span class="pill warn">7 min</span></td><td><span class="pill ok">Active</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== APPSERVER ===== -->
+  <div id="app" class="section">
+    <div class="sec-hdr">
+      <div class="sec-hdr-icon" style="background:#e0f2fe">⚙️</div>
+      <div><div class="sec-hdr-title">Application Server</div><div class="sec-hdr-sub">Tuxedo Domain · HRPRD</div></div>
+    </div>
+
+    <div class="grid-3">
+      <div class="card">
+        <div class="card-title">Domain Status</div>
+        <div class="stat-val" style="font-size:18px">HRPRD</div>
+        <div class="stat-sub">Tuxedo · psappsrv</div>
+        <div style="margin-top:10px"><span class="pill ok">Running</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Client Connections</div>
+        <div class="stat-val">87</div>
+        <div class="stat-sub">Active clients</div>
+        <div style="margin-top:10px"><span class="pill ok">Normal</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">IB Domain</div>
+        <div class="stat-val" style="font-size:18px">IBTGT</div>
+        <div class="stat-sub">Integration Broker</div>
+        <div style="margin-top:10px"><span class="pill ok">Active</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Services Status</div>
+        <div class="svc-row"><div><div class="svc-name">PSAPPSRV</div><div class="svc-sub">8 workers</div></div><span class="pill ok">Running</span></div>
+        <div class="svc-row"><div><div class="svc-name">PSQCKSRV</div><div class="svc-sub">4 workers</div></div><span class="pill ok">Running</span></div>
+        <div class="svc-row"><div><div class="svc-name">PSANALYTICSRV</div><div class="svc-sub">2 workers</div></div><span class="pill warn">Slow</span></div>
+        <div class="svc-row"><div><div class="svc-name">PSSAMSRV</div><div class="svc-sub">Security</div></div><span class="pill ok">Running</span></div>
+        <div class="svc-row"><div><div class="svc-name">PSSUBHND</div><div class="svc-sub">Subscription Handler</div></div><span class="pill ok">Running</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Long Running App PIDs</div>
+        <table>
+          <tr><th>PID</th><th>Service</th><th>Runtime</th><th>DB SID</th></tr>
+          <tr><td>28411</td><td>PSAPPSRV</td><td><span class="pill err">2h 14m</span></td><td>408</td></tr>
+          <tr><td>28502</td><td>PSQCKSRV</td><td><span class="pill warn">47 min</span></td><td>317</td></tr>
+          <tr><td>28314</td><td>PSAPPSRV</td><td><span class="pill ok">8 min</span></td><td>142</td></tr>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Log Errors (last 30 min) <span><span class="pill err">3 Errors</span></span></div>
+      <div class="alert err">❌ [14:22:01] PSAPPSRV.1882 — ORA-01555: snapshot too old during fetch</div>
+      <div class="alert warn">⚠️ [14:18:44] PSQCKSRV.1774 — Slow response time exceeds 30s threshold</div>
+      <div class="alert err">❌ [14:11:09] PSANALYTICSRV — Connection pool exhausted</div>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <div class="card">
+        <div class="card-title">IB Gateway</div>
+        <div class="svc-row"><div><div class="svc-name">Gateway URL</div><div class="svc-sub">https://hrprd.example.com/PSIGW</div></div><span class="pill ok">Reachable</span></div>
+        <div class="svc-row"><div><div class="svc-name">Response Time</div></div><span class="pill ok">142 ms</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">IB Message Alerts</div>
+        <div class="alert warn">⚠️ 14 messages in Error status — SYNC_BENADMIN</div>
+        <div class="alert ok">✅ Asynchronous queue processing normally</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== PROCESS SCHEDULER ===== -->
+  <div id="prcs" class="section">
+    <div class="sec-hdr">
+      <div class="sec-hdr-icon" style="background:#d1fae5">🔄</div>
+      <div><div class="sec-hdr-title">Process Scheduler</div><div class="sec-hdr-sub">PSPRCS · HRPRD domain</div></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-title">Domain</div>
+        <div class="stat-val" style="font-size:18px">HRPRD</div>
+        <div style="margin-top:10px"><span class="pill ok">Running</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Heartbeat</div>
+        <div class="stat-val">2 min</div>
+        <div class="stat-sub">Last ping ago</div>
+        <div style="margin-top:10px"><span class="pill ok">Healthy</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Running</div>
+        <div class="stat-val" style="color:var(--teal)">12</div>
+        <div class="stat-sub">Active processes</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Queued</div>
+        <div class="stat-val" style="color:var(--warn)">34</div>
+        <div class="stat-sub">Waiting processes</div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">Long Running Processes (> 1h)</div>
+        <table>
+          <tr><th>PID</th><th>Process</th><th>Type</th><th>Runtime</th></tr>
+          <tr><td>1204811</td><td>PAYROLL_CALC</td><td>SQR</td><td><span class="pill err">3h 42m</span></td></tr>
+          <tr><td>1204755</td><td>BEN_STAT_RPT</td><td>Crystal</td><td><span class="pill warn">1h 18m</span></td></tr>
+          <tr><td>1204699</td><td>GL_JRNL_POST</td><td>COBOL</td><td><span class="pill warn">1h 04m</span></td></tr>
+        </table>
+      </div>
+      <div class="card">
+        <div class="card-title">Stuck Processes (No update > 2h)</div>
+        <div class="alert err">❌ PID 1204600 · TAX_UPDATE · Running 4h+ · No heartbeat</div>
+        <div class="alert warn">⚠️ PID 1204580 · AE_BUDGET · Initiated · Stuck 2h 10min</div>
+        <div class="alert ok">✅ All other processes updating normally</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Reports Not Posted <span><span class="pill err">5 Unposted</span></span></div>
+      <table>
+        <tr><th>PID</th><th>Report</th><th>Completed</th><th>Status</th></tr>
+        <tr><td>1204600</td><td>TAX_UPDATE</td><td>10:14 AM</td><td><span class="pill err">Not Posted</span></td></tr>
+        <tr><td>1204512</td><td>PAYSLIP_GEN</td><td>09:52 AM</td><td><span class="pill err">Not Posted</span></td></tr>
+        <tr><td>1204488</td><td>HR_HEADCOUNT</td><td>09:30 AM</td><td><span class="pill warn">Posting...</span></td></tr>
+        <tr><td>1204402</td><td>BEN_ENROLL</td><td>08:47 AM</td><td><span class="pill err">Not Posted</span></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== WEB SERVER ===== -->
+  <div id="web" class="section">
+    <div class="sec-hdr">
+      <div class="sec-hdr-icon" style="background:#ede9fe">🌐</div>
+      <div><div class="sec-hdr-title">Web Server</div><div class="sec-hdr-sub">WebLogic · PeopleSoft PIA</div></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="card">
+        <div class="card-title">Admin Server</div>
+        <div class="stat-val" style="font-size:18px">WL-Admin</div>
+        <div class="stat-sub">Port 7001</div>
+        <div style="margin-top:10px"><span class="pill ok">Running</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Managed Server</div>
+        <div class="stat-val" style="font-size:18px">PIA</div>
+        <div class="stat-sub">Port 8000</div>
+        <div style="margin-top:10px"><span class="pill ok">Running</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Login Page</div>
+        <div class="stat-val">200</div>
+        <div class="stat-sub">HTTP response</div>
+        <div style="margin-top:10px"><span class="pill ok">Available</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Response Time</div>
+        <div class="stat-val">318<span style="font-size:16px">ms</span></div>
+        <div class="stat-sub">Avg last 5 min</div>
+        <div style="margin-top:10px"><span class="pill ok">Normal</span></div>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">JVM Heap Usage</div>
+        <div class="prog-wrap"><div class="prog-label"><span>Heap Used</span><span>71% · 5.7 GB / 8 GB</span></div><div class="prog-bar"><div class="prog-fill warn" style="width:71%"></div></div></div>
+        <div class="prog-wrap"><div class="prog-label"><span>Perm/Metaspace</span><span>48% · 384 MB / 800 MB</span></div><div class="prog-bar"><div class="prog-fill ok" style="width:48%"></div></div></div>
+        <div class="prog-wrap" style="margin:0"><div class="prog-label"><span>Old Gen</span><span>62%</span></div><div class="prog-bar"><div class="prog-fill warn" style="width:62%"></div></div></div>
+        <div class="divider" style="margin:12px 0"></div>
+        <div style="font-size:12px;color:var(--muted)">GC Pause Avg: <strong>180ms</strong> · Last GC: 3 min ago</div>
+      </div>
+      <div class="card">
+        <div class="card-title">Thread Usage</div>
+        <div class="svc-row"><div><div class="svc-name">Execute Queue Threads</div></div><span class="pill ok">42 / 75</span></div>
+        <div class="svc-row"><div><div class="svc-name">Stuck Threads</div></div><span class="pill err">2</span></div>
+        <div class="svc-row"><div><div class="svc-name">Idle Threads</div></div><span class="pill ok">33</span></div>
+        <div class="svc-row"><div><div class="svc-name">Hogging Threads</div></div><span class="pill warn">1</span></div>
+        <div class="divider" style="margin:12px 0"></div>
+        <div class="alert err" style="margin:0">❌ 2 stuck threads detected · Auto-restart scheduled</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  function show(id, btn) {
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+  function tick() {
+    const now = new Date();
+    document.getElementById('clock').textContent = now.toLocaleTimeString();
+  }
+  tick(); setInterval(tick, 1000);
+</script>
+</body>
+</html>
